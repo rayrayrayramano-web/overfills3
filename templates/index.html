@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Overills — Production Report Processor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:   #0d1b2a;
+      --steel:  #1b2d40;
+      --teal:   #00c2a8;
+      --teal2:  #00968a;
+      --light:  #e8f4f2;
+      --muted:  #6b8fa8;
+      --white:  #ffffff;
+      --red:    #ff4d6d;
+    }
+
+    body {
+      background: var(--navy);
+      color: var(--white);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      overflow-x: hidden;
+    }
+
+    /* Background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,194,168,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,194,168,.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 680px;
+      position: relative;
+      z-index: 1;
+    }
+
+    header {
+      margin-bottom: 48px;
+      text-align: center;
+    }
+
+    .logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(52px, 10vw, 80px);
+      letter-spacing: 6px;
+      color: var(--white);
+      line-height: 1;
+    }
+
+    .logo span {
+      color: var(--teal);
+    }
+
+    .tagline {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    .card {
+      background: var(--steel);
+      border: 1px solid rgba(0,194,168,.2);
+      border-radius: 16px;
+      padding: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--teal), var(--teal2), transparent);
+    }
+
+    /* Drop zone */
+    #drop-zone {
+      border: 2px dashed rgba(0,194,168,.3);
+      border-radius: 12px;
+      padding: 52px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .25s ease;
+      position: relative;
+    }
+
+    #drop-zone.dragover {
+      border-color: var(--teal);
+      background: rgba(0,194,168,.06);
+    }
+
+    #drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-icon {
+      width: 52px;
+      height: 52px;
+      margin: 0 auto 16px;
+      border: 2px solid var(--teal);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .drop-icon svg { color: var(--teal); }
+
+    .drop-title {
+      font-size: 17px;
+      font-weight: 500;
+      color: var(--white);
+      margin-bottom: 6px;
+    }
+
+    .drop-sub {
+      font-size: 13px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+    }
+
+    /* File list */
+    #file-list {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(0,194,168,.07);
+      border: 1px solid rgba(0,194,168,.15);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--light);
+      animation: slideIn .2s ease;
+    }
+
+    .file-item svg { color: var(--teal); flex-shrink: 0; }
+
+    .file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .remove-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 2px;
+      display: flex;
+      align-items: center;
+      border-radius: 4px;
+      transition: color .15s;
+    }
+    .remove-btn:hover { color: var(--red); }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Process button */
+    #process-btn {
+      margin-top: 24px;
+      width: 100%;
+      padding: 16px;
+      background: var(--teal);
+      color: var(--navy);
+      border: none;
+      border-radius: 10px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 20px;
+      letter-spacing: 3px;
+      cursor: pointer;
+      transition: all .2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    #process-btn:hover:not(:disabled) {
+      background: var(--white);
+      transform: translateY(-1px);
+    }
+
+    #process-btn:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+    }
+
+    /* Status */
+    #status {
+      margin-top: 20px;
+      padding: 14px 18px;
+      border-radius: 8px;
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      display: none;
+    }
+
+    #status.processing {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(0,194,168,.1);
+      border: 1px solid rgba(0,194,168,.3);
+      color: var(--teal);
+    }
+
+    #status.error {
+      display: block;
+      background: rgba(255,77,109,.1);
+      border: 1px solid rgba(255,77,109,.3);
+      color: var(--red);
+    }
+
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(0,194,168,.3);
+      border-top-color: var(--teal);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    footer {
+      margin-top: 36px;
+      text-align: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">Over<span>ills</span></div>
+      <div class="tagline">Production Report Processor &mdash; Jalna D20.8</div>
+    </header>
+
+    <div class="card">
+      <div id="drop-zone">
+        <input type="file" id="file-input" accept=".pdf" multiple />
+        <div class="drop-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <div class="drop-title">Drop PDF reports here</div>
+        <div class="drop-sub">or click to browse &mdash; multiple files supported</div>
+      </div>
+
+      <div id="file-list"></div>
+
+      <button id="process-btn" disabled>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        Generate Excel
+      </button>
+
+      <div id="status"></div>
+    </div>
+
+    <footer>Reads Cups Good &bull; Mean Value &bull; Recipe &bull; Exports weighted average</footer>
+  </div>
+
+  <script>
+    const dropZone   = document.getElementById('drop-zone');
+    const fileInput  = document.getElementById('file-input');
+    const fileList   = document.getElementById('file-list');
+    const processBtn = document.getElementById('process-btn');
+    const status     = document.getElementById('status');
+
+    let files = [];
+
+    function renderFiles() {
+      fileList.innerHTML = '';
+      files.forEach((f, i) => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        item.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <span class="file-name">${f.name}</span>
+          <button class="remove-btn" data-index="${i}" title="Remove">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>`;
+        fileList.appendChild(item);
+      });
+
+      fileList.querySelectorAll('.remove-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+          files.splice(+btn.dataset.index, 1);
+          renderFiles();
+          processBtn.disabled = files.length === 0;
+        });
+      });
+
+      processBtn.disabled = files.length === 0;
+    }
+
+    function addFiles(newFiles) {
+      const existing = new Set(files.map(f => f.name));
+      [...newFiles].forEach(f => {
+        if (f.name.toLowerCase().endsWith('.pdf') && !existing.has(f.name)) {
+          files.push(f);
+        }
+      });
+      renderFiles();
+    }
+
+    fileInput.addEventListener('change', e => addFiles(e.target.files));
+
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      addFiles(e.dataTransfer.files);
+    });
+
+    processBtn.addEventListener('click', async () => {
+      if (!files.length) return;
+
+      status.className = 'processing';
+      status.innerHTML = '<div class="spinner"></div> Processing PDFs — this may take a moment...';
+      processBtn.disabled = true;
+
+      const formData = new FormData();
+      files.forEach(f => formData.append('pdfs', f));
+
+      try {
+        const res = await fetch('/process', { method: 'POST', body: formData });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Server error');
+        }
+
+        const blob = await res.blob();
+        const disposition = res.headers.get('Content-Disposition') || '';
+        const match = disposition.match(/filename="?([^"]+)"?/);
+        const filename = match ? match[1] : 'Overills.xlsx';
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename; a.click();
+        URL.revokeObjectURL(url);
+
+        status.className = '';
+        status.style.display = 'none';
+      } catch (err) {
+        status.className = 'error';
+        status.textContent = '⚠ ' + err.message;
+      }
+
+      processBtn.disabled = false;
+    });
+  </script>
+</body>
+</html>
