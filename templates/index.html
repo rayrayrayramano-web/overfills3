@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Overills — Production Report Processor</title>
+  <title>Overfills</title>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -68,7 +68,7 @@
       color: var(--teal);
     }
 
-    .tagline {
+
       font-family: 'DM Mono', monospace;
       font-size: 11px;
       letter-spacing: 3px;
@@ -269,8 +269,8 @@
 <body>
   <div class="container">
     <header>
-      <div class="logo">Over<span>ills</span></div>
-      <div class="tagline">Production Report Processor &mdash; Jalna D20.8</div>
+      <div class="logo">Over<span>fills</span></div>
+
     </header>
 
     <div class="card">
@@ -299,7 +299,7 @@
       <div id="status"></div>
     </div>
 
-    <footer>Reads Cups Good &bull; Mean Value &bull; Recipe &bull; Exports weighted average</footer>
+
   </div>
 
   <script>
@@ -382,7 +382,7 @@
         const blob = await res.blob();
         const disposition = res.headers.get('Content-Disposition') || '';
         const match = disposition.match(/filename="?([^"]+)"?/);
-        const filename = match ? match[1] : 'Overills.xlsx';
+        const filename = match ? match[1] : 'Overfills.xlsx';
 
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
