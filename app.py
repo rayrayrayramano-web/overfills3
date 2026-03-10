@@ -130,7 +130,7 @@ def build_excel(rows):
 @app.route("/", methods=["GET"])
 def index():
     if not is_authenticated():
-        return render_template("login.html", error=None)
+        return render_template("login.html")
     return render_template("index.html")
 
 
