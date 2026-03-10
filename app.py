@@ -3,38 +3,42 @@ import os
 import io
 import subprocess
 from datetime import datetime
-from flask import Flask, request, send_file, render_template, jsonify
+from flask import Flask, request, send_file, render_template, jsonify, session, redirect, url_for
 from pdf2image import convert_from_bytes
 import pytesseract
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 
 app = Flask(__name__)
+app.secret_key = "overfills-secret-key-x9k2"
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
+
+PASSWORD = "307430"
 
 
 def find_tesseract():
-    """Find tesseract binary in common locations."""
     candidates = [
         "/usr/bin/tesseract",
         "/usr/local/bin/tesseract",
         "/nix/var/nix/profiles/default/bin/tesseract",
     ]
-    # Also try 'which tesseract'
     try:
         result = subprocess.run(["which", "tesseract"], capture_output=True, text=True)
         if result.returncode == 0:
             candidates.insert(0, result.stdout.strip())
     except Exception:
         pass
-
     for path in candidates:
         if os.path.isfile(path):
             return path
-    return "tesseract"  # fallback, hope it's in PATH
+    return "tesseract"
 
 
 pytesseract.pytesseract.tesseract_cmd = find_tesseract()
+
+
+def is_authenticated():
+    return session.get("authenticated") is True
 
 
 def extract_values(pdf_bytes: bytes):
@@ -57,7 +61,7 @@ def extract_values(pdf_bytes: bytes):
     if m:
         recipe = m.group(1).strip()
 
-    return cups_good, cups_mean, recipe, text  # return raw text for debugging
+    return cups_good, cups_mean, recipe, text
 
 
 def build_excel(rows):
@@ -123,14 +127,30 @@ def build_excel(rows):
     return output
 
 
-@app.route("/")
+@app.route("/", methods=["GET"])
 def index():
+    if not is_authenticated():
+        return render_template("login.html", error=None)
     return render_template("index.html")
+
+
+@app.route("/login", methods=["POST"])
+def login():
+    pwd = request.form.get("password", "")
+    if pwd == PASSWORD:
+        session["authenticated"] = True
+        return redirect(url_for("index"))
+    return render_template("login.html", error="Incorrect password")
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("index"))
 
 
 @app.route("/debug", methods=["GET"])
 def debug():
-    """Check what tesseract path is being used and if it works."""
     info = {
         "tesseract_cmd": pytesseract.pytesseract.tesseract_cmd,
         "tesseract_exists": os.path.isfile(pytesseract.pytesseract.tesseract_cmd),
@@ -140,18 +160,19 @@ def debug():
         info["tesseract_version"] = str(version)
     except Exception as e:
         info["tesseract_error"] = str(e)
-
     try:
         result = subprocess.run(["which", "tesseract"], capture_output=True, text=True)
         info["which_tesseract"] = result.stdout.strip()
     except Exception as e:
         info["which_error"] = str(e)
-
     return jsonify(info)
 
 
 @app.route("/process", methods=["POST"])
 def process():
+    if not is_authenticated():
+        return jsonify({"error": "Unauthorized"}), 401
+
     files = request.files.getlist("pdfs")
     if not files:
         return jsonify({"error": "No files uploaded"}), 400
@@ -192,7 +213,7 @@ def process():
 
     excel_file = build_excel(rows)
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
-    filename = f"Overills_{timestamp}.xlsx"
+    filename = f"Overfills_{timestamp}.xlsx"
 
     return send_file(
         excel_file,
