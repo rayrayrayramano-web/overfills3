@@ -151,7 +151,7 @@
       <form method="POST" action="/login">
         <label class="label">Enter Password</label>
         <input type="password" name="password" placeholder="······" autofocus />
-        {% if error %}
+        {% if error is defined and error %}
           <div class="error">⚠ {{ error }}</div>
         {% endif %}
         <button type="submit">Unlock</button>
